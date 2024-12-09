@@ -20,6 +20,13 @@ const Operations = new Map([
     }]
 ]);
 
+function truncateDecimalPlaces(number){
+    // Convert to string with fixed decimal places
+    const fixed = Number(number).toFixed(decimalPlaces);
+    // Convert back to number to remove trailing zeros
+    return Number(fixed).toString();
+}
+
 const decimalPlaces = 7;
 
 function operate(...args) { // performs operations based on button clicks, also returns result
@@ -31,8 +38,8 @@ function operate(...args) { // performs operations based on button clicks, also 
         throw new Error("Invalid arguments");
     }
     const [operator, firstOperand, secondOperand] = args || []; // deconstruct into individual consts
-    let operatorFunction = Operations.get(operator);
-    result = operatorFunction(firstOperand, secondOperand).toFixed(decimalPlaces);
+    let operatorFunction = Operations.get(operator); // get function from Operators object
+    result = truncateDecimalPlaces(operatorFunction(firstOperand, secondOperand)); // compute result and truncate it
     console.log(`Result: ${result}`);
     return result;
 }
@@ -197,3 +204,4 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("DOM fully loaded and parsed");
 });
 
+export { operate, clearButton, equalsButtonClicked, operatorButtonClicked, operandButtonClicked, decimalButtonClicked };

@@ -1,3 +1,5 @@
+import { operate, calculatorState, sanitizeCalculatorValue, clearButton } from './javascript.js';
+
 describe('Calculator Operations', () => {
     describe('operate function', () => {
         test('should add two numbers correctly', () => {
