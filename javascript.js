@@ -1,106 +1,175 @@
-let storedFirstOperand = null;
-let storedOperator = null;
-let storedPrevOperator = null;
-let storedSecondOperand = null;
-let storedResult = null;
+const resultElement = document.querySelector("#display");
+const buttonContainer = document.querySelector("#calculator #container");
 
-const resultElement = document.querySelector(".display");
+const calculatorState = new Map([
+    ['firstOperand', null],
+    ['operator', null], 
+    ['secondOperand', null],
+    ['result', null]
+]);
 
-const decimalPlaces = 7;
-
-const Operands = {
-    "+": (a, b) => a + b,
-    "-": (a, b) => a - b,
-    "*": (a, b) => a * b,
-    "/": (a, b) => {
+const Operations = new Map([
+    ["+", (a, b) => a + b],
+    ["-", (a, b) => a - b],
+    ["*", (a, b) => a * b],
+    ["/", (a, b) => {
         if (b === 0) {
             throw new Error("Division by zero");
         }
         return a / b;
-    },
-}
+    }]
+]);
+
+const decimalPlaces = 7;
 
 function operate(...args) { // performs operations based on button clicks, also returns result
+    console.log("Operate function called");
     if (args.length !== 3) {
         throw new Error("Invalid number of arguments");
     }
-    if (args.some(item => typeof (item !== "number"))) { // verify that all args exist
+    if (args.some(item => typeof item !== "number")) { // verify that all args exist
         throw new Error("Invalid arguments");
     }
     const [operator, firstOperand, secondOperand] = args || []; // deconstruct into individual consts
-    // if (Operands.keys.includes(operator)) {
-    //     return Operands[operator](firstOperand, secondOperand).toFixed(decimalPlaces);
-    // }
+    let operatorFunction = Operations.get(operator);
+    result = operatorFunction(firstOperand, secondOperand).toFixed(decimalPlaces);
+    console.log(`Result: ${result}`);
+    return result;
 }
 
-function clearButton(e) {
+function clearButton(_button) {
+    console.log("Clearing calculator state");
+
+    // clear all properties and reset display
+    calculatorState.set('firstOperand', null);
+    calculatorState.set('operator', null);
+    calculatorState.set('secondOperand', null);
+    calculatorState.set('result', null);
+
     resultElement.textContent = "0";
-    // clear all
-    storedFirstOperand = null;
-    storedOperator = null;
-    storedSecondOperand = null;
-    storedResult = null;
 }
 
 function equalsButtonClicked(_button) {
-    if (!storedFirstOperand || !storedOperator || !storedSecondOperand) { // need all three to perform operation
+    console.log("Equals button clicked");
+
+    if (!calculatorState.get('operator')) {
+        console.log("No operator");
         return;
     }
-    const result = operate(storedOperator, storedFirstOperand, storedSecondOperand);
-    storedFirstOperand = null;
-    storedOperator = null;
-    storedSecondOperand = null;
-    storedResult = result;
-    resultElement.textContent = storedResult;
+    if (!calculatorState.get('secondOperand')) {
+        console.log("No second operand");
+        return;
+    }
+    if (!calculatorState.get('firstOperand')) {
+        console.log("No first operand");
+        return;
+    }
+    try {
+        const result = operate(
+            calculatorState.get('operator'),
+            calculatorState.get('firstOperand'),
+            calculatorState.get('secondOperand')
+        );
+
+        calculatorState.set('firstOperand', null);
+        calculatorState.set('operator', null);
+        calculatorState.set('secondOperand', null);
+        calculatorState.set('result', result);
+    
+        resultElement.textContent = result;
+    } catch (error) {
+        console.error(error);
+        resultElement.textContent = "ERROR";
+    }
 }
 
-// Function to handle operator button clicks
-// If there's a stored first operand:
-//   - If no operator is stored, store the clicked button's value as the operator
-//   - If operator exists and matches clicked button, use first operand as second operand and calculate
 function operatorButtonClicked(button) {
-    if (storedFirstOperand && Operands.keys.contains(button.value)) {
-        if (!storedOperator) {
-            storedOperator = button.value;
-        } else if (Operands.keys.contains(button.value) && (storedOperator === button.value)) {
-            storedSecondOperand = storedFirstOperand;
-            equalsButtonClicked(button);
+    console.log("Operator button clicked");
+
+    if (calculatorState.get('firstOperand') && Operations.has(button.value)) { // if there is a first operand and operand is valid
+        if (!calculatorState.get('operator')) { // if there is no operator, store it
+            console.log("No operator, setting operator");
+            calculatorState.set('operator', button.value);
+        } else if (calculatorState.get('operator') === button.value) { // else if current operator is same as user input operator, we dont need to set it
+            console.log("Operator is same as current operator : performing duplicated operation : i.e. `4+4 4*4 4/4 4-4`");
+            calculatorState.set('secondOperand', calculatorState.get('firstOperand')); // set second operand to first one
+            equalsButtonClicked(button); // perform an operation
         }
     }
 }
 
 function operandButtonClicked(button) {
+    console.log("Operand button clicked");
+
+    let whichOperand;
+
+    function updateOperand(obj, val) { // either concatinates number or returns input
+        let operandValue = obj.get(whichOperand);
+        operandValue = operandValue ? Number(String(operandValue) + val) : Number(val) // if a number is already assigned, append value to opperand
+        obj.set(whichOperand,  operandValue); 
+        resultElement.textContent = String(operandValue);
+    }
+    
+    if (!calculatorState.get('operator')) { // if no operator stored, we are on first operand still.
+        console.log("No operator, setting first operand");
+        whichOperand = 'firstOperand';
+    } else {
+        console.log("Operator exists, setting second operand");
+        whichOperand = 'secondOperand';
+    }
+    updateOperand(calculatorState, button.value);
 }
 
-function isStringSafe(str){
-    if (!str) return false;
-    
-    // Convert to string if not already
-    str = str.toString();
-    
-    // Check for whitespace
-    if (str !== str.trim()) return false;
-    
-    // Check for HTML tags
-    if (/<[^>]*>/g.test(str)) return false;
-    
-    // Check for invalid characters
-    if (/[^0-9\.\+\-\*\/]/g.test(str)) return false;
-    
+function decimalButtonClicked(_button) {
+}
+
+
+function sanitizeCalculatorValue(value) {
+    if (!value) {
+        throw new Error(`No value`);
+    }
+    if (!safeCalculatorValues.has(value)) {
+        throw new Error(`Value is not safe`);
+    }
     return true;
 }
 
-function sanitizeButton(button){
-    if (button || button.value || isStringSafe(str) || Operands.keys.includes(button.value)) {
-        return true;
+function sanitizeButton(button) {
+    if (!button) {
+        throw new Error(`Button is null`);
     }
-    return false;
+    return sanitizeCalculatorValue(button.value);
 }
 
+const safeCalculatorValues = new Set([
+    "clear",
+    "sign", 
+    "percent",
+    "/",
+    "*",
+    "-",
+    "+",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    ".",
+    "="
+]);
+
 function eventCalculatorButtonClicked(e) {
-    if (!e.target.classList.contains("calculatorButton")) return;
+    console.log(`eventCalculatorButtonClicked: ${e.target.value}`);
+    if (e.target.type !== "button") return;
     const button = e.target;
-    if (button && sanitizeButton(button)){
+    if (button && sanitizeButton(button)) {
+        let classList = button.classList
+        console.log(`classList: ${classList}`);
         if (button.classList.contains("clear")) {
             clearButton(button);
         } else if (button.classList.contains("equals")) {
@@ -109,12 +178,22 @@ function eventCalculatorButtonClicked(e) {
             operatorButtonClicked(button);
         } else if (button.classList.contains("operand")) {
             operandButtonClicked(button);
+        } else if (button.classList.contains("decimal")) {
+            decimalButtonClicked(button);
         }
     }
 }
 
-document.addEventListener("DOMContentLoaded", function () {
-    const buttonContainer = document.querySelector(".calculator");
+
+window.addEventListener("keydown", function (e) {
+    const key = document.querySelector(`button[data-key="${e.key}"]`);
+    if (key) {
+        key.click();
+    }
+});
+
+document.addEventListener("DOMContentLoaded", () => {
     buttonContainer.addEventListener("click", eventCalculatorButtonClicked);
+    console.log("DOM fully loaded and parsed");
 });
 
