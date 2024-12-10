@@ -3,7 +3,7 @@ const buttonContainer = document.querySelector("#calculator #container");
 
 const calculatorState = new Map([
     ['firstOperand', null],
-    ['operator', null], 
+    ['operator', null],
     ['secondOperand', null],
     ['result', null]
 ]);
@@ -20,7 +20,7 @@ const Operations = new Map([
     }]
 ]);
 
-function truncateDecimalPlaces(number){
+function truncateDecimalPlaces(number) {
     // Convert to string with fixed decimal places
     const fixed = Number(number).toFixed(decimalPlaces);
     // Convert back to number to remove trailing zeros
@@ -82,7 +82,7 @@ function equalsButtonClicked(_button) {
         calculatorState.set('operator', null);
         calculatorState.set('secondOperand', null);
         calculatorState.set('result', result);
-    
+
         resultElement.textContent = result;
     } catch (error) {
         console.error(error);
@@ -113,10 +113,10 @@ function operandButtonClicked(button) {
     function updateOperand(obj, val) { // either concatinates number or returns input
         let operandValue = obj.get(whichOperand);
         operandValue = operandValue ? Number(String(operandValue) + val) : Number(val) // if a number is already assigned, append value to opperand
-        obj.set(whichOperand,  operandValue); 
+        obj.set(whichOperand, operandValue);
         resultElement.textContent = String(operandValue);
     }
-    
+
     if (!calculatorState.get('operator')) { // if no operator stored, we are on first operand still.
         console.log("No operator, setting first operand");
         whichOperand = 'firstOperand';
@@ -150,7 +150,7 @@ function sanitizeButton(button) {
 
 const safeCalculatorValues = new Set([
     "clear",
-    "sign", 
+    "sign",
     "percent",
     "/",
     "*",

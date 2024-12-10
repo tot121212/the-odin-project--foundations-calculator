@@ -1,4 +1,4 @@
-html{
+html {
     text-align: center;
     font-family: monospace;
     font-weight: initial;
@@ -28,7 +28,7 @@ html{
     grid-column: span 2;
 }
 
-#display{
+#display {
     grid-column: 1 / -1;
     background-color: cornflowerblue;
     display: flex;

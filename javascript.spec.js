@@ -3,19 +3,26 @@ import { operate, calculatorState, sanitizeCalculatorValue, clearButton } from '
 describe('Calculator Operations', () => {
     describe('operate function', () => {
         test('should add two numbers correctly', () => {
-            expect(operate('+', 2, 3)).toBe('5.0000000');
+            expect(operate('+', 2, 3)).toBe('5');
         });
 
         test('should subtract two numbers correctly', () => {
-            expect(operate('-', 5, 3)).toBe('2.0000000');
+            expect(operate('-', 5, 3)).toBe('2');
         });
 
         test('should multiply two numbers correctly', () => {
-            expect(operate('*', 4, 3)).toBe('12.0000000');
+            expect(operate('*', 4, 3)).toBe('12');
         });
 
         test('should divide two numbers correctly', () => {
-            expect(operate('/', 6, 2)).toBe('3.0000000');
+            expect(operate('/', 6, 2)).toBe('3');
+        });
+
+        test('should handle decimal numbers correctly', () => {
+            expect(operate('+', 2.5, 1.3)).toBe('3.8');
+            expect(operate('-', 5.7, 2.3)).toBe('3.4');
+            expect(operate('*', 2.5, 2)).toBe('5');
+            expect(operate('/', 5.4, 2)).toBe('2.7');
         });
 
         test('should throw error when dividing by zero', () => {
