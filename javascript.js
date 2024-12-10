@@ -20,56 +20,53 @@ const Operations = new Map([
     }]
 ]);
 
-function truncateDecimalPlaces(number) {
-    // Convert to string with fixed decimal places
-    const fixed = Number(number).toFixed(decimalPlaces);
-    // Convert back to number to remove trailing zeros
-    return Number(fixed).toString();
-}
-
-const decimalPlaces = 7;
+const fractionDigits = 7;
 
 function operate(...args) { // performs operations based on button clicks, also returns result
     console.log("Operate function called");
     if (args.length !== 3) {
         throw new Error("Invalid number of arguments");
     }
-    if (args.some(item => typeof item !== "number")) { // verify that all args exist
+    if (args.slice(1, 2).some(item => typeof item !== "number")) { // verify that all args exist
         throw new Error("Invalid arguments");
     }
     const [operator, firstOperand, secondOperand] = args || []; // deconstruct into individual consts
-    let operatorFunction = Operations.get(operator); // get function from Operators object
-    result = truncateDecimalPlaces(operatorFunction(firstOperand, secondOperand)); // compute result and truncate it
+    let operatorFunction = Operations.get(operator); // get function from Operators object for specified operator
+    if (!operatorFunction || typeof operatorFunction !== "function") {
+        throw new Error("Invalid operator or operatorFunction");
+    }
+    let result = operatorFunction(firstOperand, secondOperand).toFixed(fractionDigits);
+    if (!result || typeof result !== "number") {
+        throw new Error("Invalid result");
+    }
     console.log(`Result: ${result}`);
     return result;
 }
 
-function clearButton(_button) {
+function clearCalculatorState() {
+    console.log("Clearing calculator state");
+    calculatorState.forEach((value, key) => {
+        calculatorState.set(key, null);
+    });
+}
+
+function clearButtonClicked(_button) {
     console.log("Clearing calculator state");
 
     // clear all properties and reset display
-    calculatorState.set('firstOperand', null);
-    calculatorState.set('operator', null);
-    calculatorState.set('secondOperand', null);
-    calculatorState.set('result', null);
-
+    clearCalculatorState()
     resultElement.textContent = "0";
 }
 
-function equalsButtonClicked(_button) {
-    console.log("Equals button clicked");
-
+function performEqualsOperation() {
     if (!calculatorState.get('operator')) {
-        console.log("No operator");
-        return;
+        throw new Error("No operator");
     }
     if (!calculatorState.get('secondOperand')) {
-        console.log("No second operand");
-        return;
+        throw new Error("No second operand");
     }
     if (!calculatorState.get('firstOperand')) {
-        console.log("No first operand");
-        return;
+        throw new Error("No first operand");
     }
     try {
         const result = operate(
@@ -77,46 +74,70 @@ function equalsButtonClicked(_button) {
             calculatorState.get('firstOperand'),
             calculatorState.get('secondOperand')
         );
-
+        if (typeof result !== "number") {
+            throw new Error("Invalid result");
+        }
         calculatorState.set('firstOperand', null);
         calculatorState.set('operator', null);
         calculatorState.set('secondOperand', null);
-        calculatorState.set('result', result);
-
-        resultElement.textContent = result;
+        calculatorState.set('result', Number(result));
     } catch (error) {
         console.error(error);
-        resultElement.textContent = "ERROR";
+        return "ERROR";
+    }
+}
+
+function equalsButtonClicked(_button) {
+    console.log("Equals button clicked");
+    let operationError = performEqualsOperation();
+    resultElement.textContent = operationError ? operationError : + calculatorState.get('result');
+}
+
+function performOperatorDeclaration(operator) {
+    if (typeof operator !== "string") {
+        throw new Error("Invalid datatype");
+    }
+    if (!Operations.has(operator)){ // check for if operations has that operator
+        throw new Error("Invalid operator operation");
+    }
+    if (calculatorState.get('firstOperand')) { // if there is a first operand and operand is valid
+        if (!calculatorState.get('operator')) { // if there is no operator, store it
+            console.log("No operator, setting operator");
+            calculatorState.set('operator', operator);
+        } else if (calculatorState.get('operator') === operator) { // else if current operator is same as user input operator, we dont need to set it
+            console.log("Operator is same as current operator : performing duplicated operation : i.e. `4+4 4*4 4/4 4-4`");
+            calculatorState.set('secondOperand', calculatorState.get('firstOperand')); // set second operand to first one
+        }
+    } else {
+        console.log("No first operand, ignore");
     }
 }
 
 function operatorButtonClicked(button) {
     console.log("Operator button clicked");
-
-    if (calculatorState.get('firstOperand') && Operations.has(button.value)) { // if there is a first operand and operand is valid
-        if (!calculatorState.get('operator')) { // if there is no operator, store it
-            console.log("No operator, setting operator");
-            calculatorState.set('operator', button.value);
-        } else if (calculatorState.get('operator') === button.value) { // else if current operator is same as user input operator, we dont need to set it
-            console.log("Operator is same as current operator : performing duplicated operation : i.e. `4+4 4*4 4/4 4-4`");
-            calculatorState.set('secondOperand', calculatorState.get('firstOperand')); // set second operand to first one
-            equalsButtonClicked(button); // perform an operation
-        }
-    }
+    let operationError = performOperatorDeclaration(button.value);
+    resultElement.textContent = operationError ? operationError : Number(calculatorState.get('result'));
 }
 
-function operandButtonClicked(button) {
-    console.log("Operand button clicked");
-
-    let whichOperand;
-
-    function updateOperand(obj, val) { // either concatinates number or returns input
-        let operandValue = obj.get(whichOperand);
-        operandValue = operandValue ? Number(String(operandValue) + val) : Number(val) // if a number is already assigned, append value to opperand
-        obj.set(whichOperand, operandValue);
-        resultElement.textContent = String(operandValue);
+function whichOperand(){
+    let which;
+    if (!calculatorState.get('operator')) { // if no operator stored, we are on first operand still.
+        console.log("No operator, setting first operand");
+        which = 'firstOperand';
+    } else {
+        console.log("Operator exists, setting second operand");
+        which = 'secondOperand';
     }
+    return which;
+}
 
+function performOperandDeclaration(newOperand) {
+    if (typeof newOperand !== "number") {
+        throw new Error("Invalid datatype");
+    }
+    
+    // Check for operator, finding current operator
+    let whichOperand;
     if (!calculatorState.get('operator')) { // if no operator stored, we are on first operand still.
         console.log("No operator, setting first operand");
         whichOperand = 'firstOperand';
@@ -124,28 +145,23 @@ function operandButtonClicked(button) {
         console.log("Operator exists, setting second operand");
         whichOperand = 'secondOperand';
     }
-    updateOperand(calculatorState, button.value);
+    
+    // Check if operand exists
+    let storedOperand = Number(calculatorState.get(whichOperand)); // get specified operand
+    if (storedOperand){ // if a number is already assigned, append value to opperand
+        newOperand = Number(String(storedOperand) + String(newOperand)) // concat
+    }
+    
+    calculatorState.set(whichOperand, newOperand);
+    return String(newOperand);
+}
+
+function operandButtonClicked(button) {
+    console.log("Operand button clicked");
+    resultElement.textContent =  performOperandDeclaration(button.value);
 }
 
 function decimalButtonClicked(_button) {
-}
-
-
-function sanitizeCalculatorValue(value) {
-    if (!value) {
-        throw new Error(`No value`);
-    }
-    if (!safeCalculatorValues.has(value)) {
-        throw new Error(`Value is not safe`);
-    }
-    return true;
-}
-
-function sanitizeButton(button) {
-    if (!button) {
-        throw new Error(`Button is null`);
-    }
-    return sanitizeCalculatorValue(button.value);
 }
 
 const safeCalculatorValues = new Set([
@@ -170,15 +186,31 @@ const safeCalculatorValues = new Set([
     "="
 ]);
 
+function sanitizeCalculatorValue(value) {
+    if (!value) {
+        throw new Error(`No value`);
+    }
+    if (!safeCalculatorValues.has(value)) {
+        throw new Error(`Value is not safe`);
+    }
+    return true;
+}
+
+function sanitizeButton(button) {
+    if (!button) {
+        throw new Error(`Button is null`);
+    }
+    return sanitizeCalculatorValue(button.value);
+}
+
 function eventCalculatorButtonClicked(e) {
     console.log(`eventCalculatorButtonClicked: ${e.target.value}`);
     if (e.target.type !== "button") return;
     const button = e.target;
     if (button && sanitizeButton(button)) {
-        let classList = button.classList
-        console.log(`classList: ${classList}`);
+        console.log(`button.classList: ${button.classList}`);
         if (button.classList.contains("clear")) {
-            clearButton(button);
+            clearButtonClicked(button);
         } else if (button.classList.contains("equals")) {
             equalsButtonClicked(button);
         } else if (button.classList.contains("operator")) {
@@ -191,7 +223,6 @@ function eventCalculatorButtonClicked(e) {
     }
 }
 
-
 window.addEventListener("keydown", function (e) {
     const key = document.querySelector(`button[data-key="${e.key}"]`);
     if (key) {
@@ -203,5 +234,3 @@ document.addEventListener("DOMContentLoaded", () => {
     buttonContainer.addEventListener("click", eventCalculatorButtonClicked);
     console.log("DOM fully loaded and parsed");
 });
-
-export { operate, clearButton, equalsButtonClicked, operatorButtonClicked, operandButtonClicked, decimalButtonClicked };
