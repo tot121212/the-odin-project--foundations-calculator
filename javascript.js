@@ -12,39 +12,51 @@ const Operations = new Map([
     ["+", (a, b) => a + b],
     ["-", (a, b) => a - b],
     ["*", (a, b) => a * b],
-    ["/", (a, b) => {
-        if (b === 0) {
-            throw new Error("Division by zero");
-        }
-        return a / b;
-    }]
+    ["/", (a, b) => a / b]
 ]);
 
 const fractionDigits = 7;
 
-function operate(...args) { // performs operations based on button clicks, also returns result
-    console.log("Operate function called");
-    if (args.length !== 3) {
-        throw new Error("Invalid number of arguments");
+function calculatorErrorAndRethrow(error) {
+    clearCalculatorState();
+    calculatorState.set('result', 'ERROR');
+    console.error(error);
+    throw error;
+}
+
+function operate(operator, firstOperand, secondOperand) { // performs operations based on button clicks, also returns result
+    try {
+        console.log("Operate function called");
+        if (typeof operator !== 'string'){
+            throw new Error("Operator is not a string");
+        }
+        const operands = [firstOperand, secondOperand];
+        for (const operand of operands) {
+            if (typeof operand !== 'number') {
+                throw new Error(`${operand} is not a number`);
+            }
+            if (operand === 0 && operator === "/"){
+                throw new Error('Cannot divide by zero');
+            }
+        }
+        let operatorFunction = Operations.get(operator); // get function from Operators object for specified operator
+        if (!operatorFunction) {
+            throw new Error("Invalid operator or operatorFunction");
+        }
+        let result = operatorFunction(firstOperand, secondOperand).toFixed(fractionDigits);
+        if (typeof Number(result) !== "number") {
+            throw new Error("Invalid result");
+        }
+        console.log(`Result: ${result}`);
+        return result;
     }
-    if (args.slice(1, 2).some(item => typeof item !== "number")) { // verify that all args exist
-        throw new Error("Invalid arguments");
+    catch (error) {
+        calculatorErrorAndRethrow(error);
     }
-    const [operator, firstOperand, secondOperand] = args || []; // deconstruct into individual consts
-    let operatorFunction = Operations.get(operator); // get function from Operators object for specified operator
-    if (!operatorFunction || typeof operatorFunction !== "function") {
-        throw new Error("Invalid operator or operatorFunction");
-    }
-    let result = operatorFunction(firstOperand, secondOperand).toFixed(fractionDigits);
-    if (typeof Number(result) !== "number") {
-        throw new Error("Invalid result");
-    }
-    console.log(`Result: ${result}`);
-    return result;
 }
 // Note: Need to fix all operations so that they display correctly.
-function updateResultElement(result){
-    resultElement.textContent = result;
+function updateResultElement(result) {
+    resultElement.textContent = String(result);
 }
 
 function clearCalculatorState() {
@@ -52,7 +64,7 @@ function clearCalculatorState() {
     calculatorState.forEach((value, key) => {
         calculatorState.set(key, null);
     });
-    calculatorState.set('result', '0');
+    calculatorState.set('result', 0);
 }
 
 function clearButtonClicked(_button) {
@@ -60,55 +72,46 @@ function clearButtonClicked(_button) {
 
     // clear all properties and reset display
     clearCalculatorState();
-    updateResultElement("0");
+    updateResultElement(calculatorState.get("result"));
 }
 
 function performEqualsOperation() {
-    try {
-        if (!calculatorState.get('operator')) {
-            throw new Error("No operator");
-        }
-        if (!calculatorState.get('secondOperand')) {
-            throw new Error("No second operand");
-        }
-        if (!calculatorState.get('firstOperand')) {
-            throw new Error("No first operand");
-        }
-        const result = operate(
-            calculatorState.get('operator'),
-            calculatorState.get('firstOperand'),
-            calculatorState.get('secondOperand')
-        );
-        
-        calculatorState.set('operator', null);
-        calculatorState.set('secondOperand', null);
-        calculatorState.set('result', Number(result));
-        calculatorState.set('firstOperand', calculatorState.get('result'));
-    } catch (error) {
-        switch (error.message) {
-            case "No operator":
-                console.log("No operator, ignoring");
-                break;
-            case "No second operand":
-                console.log("No second operand, ignoring");
-                break;
-            case "No first operand":
-                console.log("No first operand, ignoring");
-                break;
-            default:
-                console.error(error);
-                calculatorState.set('result', "ERROR");
-        }
+    if (calculatorState.get('firstOperand') === null) {
+        console.log("No first operand, ignoring");
+        return;
     }
+    if (!calculatorState.get('operator')) {
+        console.log("No operator, ignoring");
+        return;
+    }
+    if (!calculatorState.get('secondOperand')) {
+        console.log("No second operand, ignoring");
+        return;
+    }
+    
+    const result = operate(
+        calculatorState.get('operator'),
+        calculatorState.get('firstOperand'),
+        calculatorState.get('secondOperand')
+    );
+
+    calculatorState.set('operator', null);
+    calculatorState.set('secondOperand', null);
+    calculatorState.set('result', Number(result));
+    calculatorState.set('firstOperand', calculatorState.get('result'));
+
+    return true;
 }
 
 function equalsButtonClicked(_button) {
     console.log("Equals button clicked");
-    performEqualsOperation();
-    updateResultElement(String(calculatorState.get('result')));
+    // if not enough
+    if (performEqualsOperation() === true){
+        updateResultElement(String(calculatorState.get('result')));
+    }
 }
 
-function performRepeatedOperatorOperation(){
+function performRepeatedOperatorOperation() {
     console.log("Performing repeatedOperatorOperation");
     calculatorState.set('secondOperand', calculatorState.get('firstOperand')); // set second operand to first one
     performEqualsOperation();
@@ -116,11 +119,8 @@ function performRepeatedOperatorOperation(){
 
 function performOperatorDeclaration(operator) {
     try {
-        if (typeof operator !== "string") {
-            throw new Error("Invalid datatype");
-        }
-        if (!Operations.has(operator)) { // check for if operations has that operator
-            throw new Error("Invalid operator operation");
+        if (typeof operator !== "string" || !Operations.get(operator)) { // check for if operations has that operator
+            throw new Error("Invalid operator");
         }
         if (calculatorState.get('firstOperand')) { // if there is a first operand and operand is valid
             if (!calculatorState.get('operator')) { // if there is no operator, store it
@@ -134,14 +134,13 @@ function performOperatorDeclaration(operator) {
         }
     }
     catch (error) {
-        console.error(error);
-        calculatorState.set('result', "ERROR");
+        calculatorErrorAndRethrow(error);
     }
 }
 
 function operatorButtonClicked(button) {
     console.log("Operator button clicked");
-    if (performOperatorDeclaration(button.value) === "repeatedOperator"){ // if we have repeated operator
+    if (performOperatorDeclaration(button.value) === "repeatedOperator") { // if we have repeated operator
         performRepeatedOperatorOperation();
         updateResultElement(String(calculatorState.get('result'))); // update display after repeating
     }
@@ -161,32 +160,18 @@ function whichOperand() {
 
 function performOperandDeclaration(newOperand) {
     try {
-        newOperand = Number(newOperand);
-        if (typeof newOperand !== "number") {
-            throw new Error("Invalid datatype");
+        if (isNaN(Number(newOperand))) {
+            throw new Error("Invalid operand");
         }
-
-        // Check for operator, finding current operator
-        let whichOperand;
-        if (!calculatorState.get('operator')) { // if no operator stored, we are on first operand still.
-            console.log("No operator, setting first operand");
-            whichOperand = 'firstOperand';
-        } else {
-            console.log("Operator exists, setting second operand");
-            whichOperand = 'secondOperand';
-        }
-
-        // Check if operand exists
-        let storedOperand = Number(calculatorState.get(whichOperand)); // get specified operand
-        if (storedOperand) { // if a number is already assigned, append value to opperand
+        let which = whichOperand();
+        let storedOperand = calculatorState.get(which); // get specified operand
+        if (!(storedOperand === null)) { // if a number is already assigned, append value to opperand
             newOperand = Number(String(storedOperand) + String(newOperand)); // concat
         }
-        calculatorState.set(whichOperand, newOperand);
-        console.log(`calculatorState.get(${whichOperand}) is ${calculatorState.get(whichOperand)}`);
+        calculatorState.set(which, Number(newOperand));
     }
     catch (error) {
-        calculatorState.set('result', "ERROR");
-        return "ERROR";
+        calculatorErrorAndRethrow(error);
     }
 }
 
@@ -198,30 +183,27 @@ function operandButtonClicked(button) {
 
 function performDecimalDeclaration() {
     try {
-        let whichOperand = whichOperand();
-        let operand = calculatorState.get(whichOperand);
-        if (!operand) {
-            operand = "0.";
-        } else if (operand.includes(".")) {
-            throw new Error("Operand already contains decimal");
-        } else {
-            operand += ".";
+        let which = whichOperand();
+        let operand = String(calculatorState.get(which));
+        if (!operand instanceof String){
+            throw new Error("Operand is valid");
         }
-        calculatorState.set(whichOperand, operand);
+        if (operand.includes(".")) {
+            console.log("Operand already contains decimal, ignoring");
+            return;
+        }
+        operand += ".";
+        calculatorState.set(which, operand);
     }
     catch (error) {
-        switch (error){
-            default:
-                calculatorState.set('result', "ERROR");
-                return "ERROR";
-        }
+        calculatorErrorAndRethrow(error);
     }
 }
 
 function decimalButtonClicked(button) {
     console.log("Decimal button clicked");
     performDecimalDeclaration();
-    updateResultElement();
+    updateResultElement(String(calculatorState.get(whichOperand())));
 }
 
 const safeCalculatorValues = new Set([
@@ -247,20 +229,30 @@ const safeCalculatorValues = new Set([
 ]);
 
 function sanitizeCalculatorValue(value) {
-    if (!value) {
-        throw new Error(`No value`);
+    try{
+        if (!value) {
+            throw new Error(`No value`);
+        }
+        if (!safeCalculatorValues.has(value)) {
+            throw new Error(`Value is not safe`);
+        }
+        return true;
     }
-    if (!safeCalculatorValues.has(value)) {
-        throw new Error(`Value is not safe`);
+    catch (error) {
+        calculatorErrorAndRethrow(error);
     }
-    return true;
 }
 
 function sanitizeButton(button) {
-    if (!button) {
-        throw new Error(`Button is null`);
+    try{
+        if (!button) {
+            throw new Error(`Button is null`);
+        }
+        return sanitizeCalculatorValue(button.value);
     }
-    return sanitizeCalculatorValue(button.value);
+    catch (error) {
+        calculatorErrorAndRethrow(error);
+    }
 }
 
 function eventCalculatorButtonClicked(e) {
@@ -294,3 +286,18 @@ document.addEventListener("DOMContentLoaded", () => {
     buttonContainer.addEventListener("click", eventCalculatorButtonClicked);
     console.log("DOM fully loaded and parsed");
 });
+
+export {
+    calculatorErrorAndRethrow,
+    operate,
+    calculatorState,
+    clearCalculatorState,
+    performEqualsOperation,
+    performOperandDeclaration,
+    performOperatorDeclaration,
+    performRepeatedOperatorOperation,
+    performDecimalDeclaration,
+    Operations,
+    whichOperand,
+    fractionDigits,
+};

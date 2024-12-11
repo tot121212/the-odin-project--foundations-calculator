@@ -1,82 +1,131 @@
 // calculator.test.js
 
-const { 
+import {
     operate,
-    truncateDecimalPlaces,
     calculatorState,
+    clearCalculatorState,
+    performEqualsOperation,
+    performOperandDeclaration,
+    performOperatorDeclaration,
+    performRepeatedOperatorOperation,
+    performDecimalDeclaration,
     Operations,
-} = require('./javascript.js');
+    whichOperand,
+    fractionDigits,
+    calculatorErrorAndRethrow,
+} from './javascript.js';
 
 describe('Calculator Operations', () => {
+    beforeEach(() => {
+        clearCalculatorState();
+    });
+
     describe('operate function', () => {
-        test('should add two numbers correctly', () => {
-            expect(operate('+', 2, 3)).toBe(5);
+        test('adds two numbers correctly', () => {
+            expect(operate('+', 2, 3)).toBe('5.0000000');
         });
 
-        test('should subtract two numbers correctly', () => {
-            expect(operate('-', 5, 3)).toBe(2);
+        test('subtracts two numbers correctly', () => {
+            expect(operate('-', 5, 3)).toBe('2.0000000');
         });
 
-        test('should multiply two numbers correctly', () => {
-            expect(operate('*', 4, 3)).toBe(12);
+        test('multiplies two numbers correctly', () => {
+            expect(operate('*', 4, 3)).toBe('12.0000000');
         });
 
-        test('should divide two numbers correctly', () => {
-            expect(operate('/', 6, 2)).toBe(3);
+        test('divides two numbers correctly', () => {
+            expect(operate('/', 6, 2)).toBe('3.0000000');
         });
 
-        test('should throw error on division by zero', () => {
-            expect(() => operate('/', 6, 0)).toThrow('Division by zero');
-        });
-
-        test('should throw error with invalid number of arguments', () => {
-            expect(() => operate('+', 2)).toThrow('Invalid number of arguments');
-        });
-
-        test('should throw error with invalid operator', () => {
-            expect(() => operate('%', 2, 3)).toThrow('Invalid operator or operatorFunction');
+        test('throws error on division by zero', () => {
+            expect(() => operate('/', 6, 0)).toThrow('Cannot divide by zero');
         });
     });
 
-    describe('truncateDecimalPlaces function', () => {
-        test('should truncate decimal places correctly', () => {
-            expect(truncateDecimalPlaces(3.14159265359)).toBeCloseTo(3.1415927);
-        });
-
-        test('should handle whole numbers', () => {
-            expect(truncateDecimalPlaces(42)).toBe(42);
-        });
-    });
-
-    describe('calculatorState', () => {
-        beforeEach(() => {
-            // Reset calculator state before each test
-            calculatorState.set('firstOperand', null);
-            calculatorState.set('operator', null);
-            calculatorState.set('secondOperand', null);
-            calculatorState.set('result', null);
-        });
-
-        test('should initialize with null values', () => {
+    describe('calculatorState management', () => {
+        test('clearCalculatorState resets all values', () => {
+            calculatorState.set('firstOperand', 5);
+            calculatorState.set('operator', '+');
+            calculatorState.set('secondOperand', 3);
+            clearCalculatorState();
+            
             expect(calculatorState.get('firstOperand')).toBeNull();
             expect(calculatorState.get('operator')).toBeNull();
             expect(calculatorState.get('secondOperand')).toBeNull();
-            expect(calculatorState.get('result')).toBeNull();
+            expect(calculatorState.get('result')).toBe(0);
         });
     });
 
-    describe('Operations Map', () => {
-        test('should contain all required operators', () => {
-            expect(Operations.has('+')).toBeTruthy();
-            expect(Operations.has('-')).toBeTruthy();
-            expect(Operations.has('*')).toBeTruthy();
-            expect(Operations.has('/')).toBeTruthy();
+    describe('performOperandDeclaration', () => {
+        test('sets first operand correctly', () => {
+            performOperandDeclaration('5');
+            expect(calculatorState.get('firstOperand')).toBe(5);
         });
 
-        test('each operation should be a function', () => {
-            Operations.forEach(operation => {
-                expect(typeof operation).toBe('function');
-            });
+        test('concatenates digits for same operand', () => {
+            performOperandDeclaration('1');
+            performOperandDeclaration('2');
+            expect(calculatorState.get('firstOperand')).toBe(12);
+        });
+
+        test('handles invalid input', () => {
+            expect(() => performOperandDeclaration('fleshWound')).toThrow("Invalid operand");
+        });
+    });
+
+    describe('performOperatorDeclaration', () => {
+        test('ensure first operand is declared before setting operator, but shouldn\'t throw error', () => {
+            calculatorState.set('firstOperand', null);
+            performOperatorDeclaration('+')
+            expect(calculatorState.get('operator')).toBe(null);
+        });
+        test('ensure operator is string', () => {
+            calculatorState.set('firstOperand', 5);
+            expect(() => performOperatorDeclaration(8)).toThrow('Invalid operator');
+        });
+        test('ensure operator is valid', () => {
+            calculatorState.set('firstOperand', 5);
+            expect(() => performOperatorDeclaration('a')).toThrow('Invalid operator');
+        });
+        test('sets operator correctly', () => {
+            calculatorState.set('firstOperand', 5);
+            performOperatorDeclaration('+');
+            expect(calculatorState.get('operator')).toBe('+');
+        });
+        test('identifies repeated operator', () => {
+            calculatorState.set('firstOperand', 5);
+            calculatorState.set('operator', '+');
+            expect(performOperatorDeclaration('+')).toBe('repeatedOperator');
+        });
+    });
+
+    describe('performDecimalDeclaration', () => {
+        test('adds decimal point to number', () => {
+            calculatorState.set('firstOperand', '5');
+            performDecimalDeclaration();
+            expect(calculatorState.get('firstOperand')).toBe('5.');
+        });
+
+        test('adds leading zero for decimal without number', () => {
+            performDecimalDeclaration();
+            expect(calculatorState.get('firstOperand')).toBe('0.');
+        });
+        test('does not allow more than one decimal point in a declaration', () => {
+            calculatorState.set('firstOperand', '5.5');
+            performDecimalDeclaration();
+            expect(calculatorState.get('firstOperand')).toBe('5.5');
+        });
+    });
+
+    describe('whichOperand function', () => {
+        test('returns firstOperand when no operator', () => {
+            expect(whichOperand()).toBe('firstOperand');
+        });
+
+        test('returns secondOperand when operator exists', () => {
+            calculatorState.set('operator', '+');
+            expect(whichOperand()).toBe('secondOperand');
         });
     });
 });
+

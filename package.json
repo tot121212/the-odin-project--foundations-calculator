@@ -1,5 +1,13 @@
 {
   "name": "the-odin-project--foundations-calculator",
+  "jest": {
+    "testEnvironment": "jsdom",
+    "bail": 1,
+    "verbose": true,
+    "transform": {
+      "^.+\\.js$": "babel-jest"
+    }
+  },
   "version": "1.0.0",
   "main": "javascript.js",
   "scripts": {
@@ -13,10 +21,5 @@
     "@babel/plugin-transform-modules-commonjs": "^7.26.3",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0"
-  },
-  "jest": {
-    "testEnvironment": "jsdom",
-    "bail": 1,
-    "verbose": true
   }
 }
