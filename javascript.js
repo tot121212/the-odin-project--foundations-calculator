@@ -2,7 +2,7 @@ const resultElement = document.querySelector("#display");
 const buttonContainer = document.querySelector("#calculator #container");
 
 const calculatorState = new Map([
-    ['firstOperand', null],
+    ['firstOperand', '0'],
     ['operator', null],
     ['secondOperand', null],
     ['result', null]
@@ -65,8 +65,7 @@ function clearCalculatorState() {
     calculatorState.forEach((value, key) => {
         calculatorState.set(key, null);
     });
-    calculatorState.set('result', 0);
-    calculatorState.set('firstOperand', 0);
+    calculatorState.set('result', '0');
 }
 
 function clearButtonClicked(_button) {
@@ -166,7 +165,7 @@ function performOperandDeclaration(newOperand) {
             throw new Error("Invalid operand");
         }
         let which = whichOperand();
-        let storedOperand = Number(calculatorState.get(which)); // get specified operand
+        let storedOperand = calculatorState.get(which); // get specified operand
         if (storedOperand !== null || storedOperand === 0) { // if a number is already assigned, append value to opperand
             newOperand = Number(String(storedOperand) + String(newOperand)); // concat
         }
@@ -194,8 +193,7 @@ function performDecimalDeclaration() {
             console.log("Operand already contains decimal, ignoring");
             return;
         }
-        operand += ".";
-        calculatorState.set(which, operand);
+        calculatorState.set(which, operand.concat("."));
     }
     catch (error) {
         calculatorErrorAndRethrow(error);
