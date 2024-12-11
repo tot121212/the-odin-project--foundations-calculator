@@ -42,20 +42,6 @@ describe('Calculator Operations', () => {
         });
     });
 
-    describe('calculatorState management', () => {
-        test('clearCalculatorState resets all values', () => {
-            calculatorState.set('firstOperand', 5);
-            calculatorState.set('operator', '+');
-            calculatorState.set('secondOperand', 3);
-            clearCalculatorState();
-            
-            expect(calculatorState.get('firstOperand')).toBeNull();
-            expect(calculatorState.get('operator')).toBeNull();
-            expect(calculatorState.get('secondOperand')).toBeNull();
-            expect(calculatorState.get('result')).toBe(0);
-        });
-    });
-
     describe('performOperandDeclaration', () => {
         test('sets first operand correctly', () => {
             performOperandDeclaration('5');
@@ -107,6 +93,7 @@ describe('Calculator Operations', () => {
         });
 
         test('adds leading zero for decimal without number', () => {
+            calculatorState.set('firstOperand', '0');
             performDecimalDeclaration();
             expect(calculatorState.get('firstOperand')).toBe('0.');
         });

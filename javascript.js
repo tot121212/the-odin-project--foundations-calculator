@@ -54,6 +54,7 @@ function operate(operator, firstOperand, secondOperand) { // performs operations
         calculatorErrorAndRethrow(error);
     }
 }
+
 // Note: Need to fix all operations so that they display correctly.
 function updateResultElement(result) {
     resultElement.textContent = String(result);
@@ -65,6 +66,7 @@ function clearCalculatorState() {
         calculatorState.set(key, null);
     });
     calculatorState.set('result', 0);
+    calculatorState.set('firstOperand', 0);
 }
 
 function clearButtonClicked(_button) {
@@ -164,8 +166,8 @@ function performOperandDeclaration(newOperand) {
             throw new Error("Invalid operand");
         }
         let which = whichOperand();
-        let storedOperand = calculatorState.get(which); // get specified operand
-        if (!(storedOperand === null)) { // if a number is already assigned, append value to opperand
+        let storedOperand = Number(calculatorState.get(which)); // get specified operand
+        if (storedOperand !== null || storedOperand === 0) { // if a number is already assigned, append value to opperand
             newOperand = Number(String(storedOperand) + String(newOperand)); // concat
         }
         calculatorState.set(which, Number(newOperand));
@@ -274,13 +276,6 @@ function eventCalculatorButtonClicked(e) {
         }
     }
 }
-
-window.addEventListener("keydown", function (e) {
-    const key = document.querySelector(`button[data-key="${e.key}"]`);
-    if (key) {
-        key.click();
-    }
-});
 
 document.addEventListener("DOMContentLoaded", () => {
     buttonContainer.addEventListener("click", eventCalculatorButtonClicked);
