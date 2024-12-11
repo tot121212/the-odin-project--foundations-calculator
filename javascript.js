@@ -36,11 +36,15 @@ function operate(...args) { // performs operations based on button clicks, also 
         throw new Error("Invalid operator or operatorFunction");
     }
     let result = operatorFunction(firstOperand, secondOperand).toFixed(fractionDigits);
-    if (!result || typeof result !== "number") {
+    if (typeof Number(result) !== "number") {
         throw new Error("Invalid result");
     }
     console.log(`Result: ${result}`);
     return result;
+}
+// Note: Need to fix all operations so that they display correctly.
+function updateResultElement(result){
+    resultElement.textContent = result;
 }
 
 function clearCalculatorState() {
@@ -48,78 +52,102 @@ function clearCalculatorState() {
     calculatorState.forEach((value, key) => {
         calculatorState.set(key, null);
     });
+    calculatorState.set('result', '0');
 }
 
 function clearButtonClicked(_button) {
     console.log("Clearing calculator state");
 
     // clear all properties and reset display
-    clearCalculatorState()
-    resultElement.textContent = "0";
+    clearCalculatorState();
+    updateResultElement("0");
 }
 
 function performEqualsOperation() {
-    if (!calculatorState.get('operator')) {
-        throw new Error("No operator");
-    }
-    if (!calculatorState.get('secondOperand')) {
-        throw new Error("No second operand");
-    }
-    if (!calculatorState.get('firstOperand')) {
-        throw new Error("No first operand");
-    }
     try {
+        if (!calculatorState.get('operator')) {
+            throw new Error("No operator");
+        }
+        if (!calculatorState.get('secondOperand')) {
+            throw new Error("No second operand");
+        }
+        if (!calculatorState.get('firstOperand')) {
+            throw new Error("No first operand");
+        }
         const result = operate(
             calculatorState.get('operator'),
             calculatorState.get('firstOperand'),
             calculatorState.get('secondOperand')
         );
-        if (typeof result !== "number") {
-            throw new Error("Invalid result");
-        }
-        calculatorState.set('firstOperand', null);
+        
         calculatorState.set('operator', null);
         calculatorState.set('secondOperand', null);
         calculatorState.set('result', Number(result));
+        calculatorState.set('firstOperand', calculatorState.get('result'));
     } catch (error) {
-        console.error(error);
-        return "ERROR";
+        switch (error.message) {
+            case "No operator":
+                console.log("No operator, ignoring");
+                break;
+            case "No second operand":
+                console.log("No second operand, ignoring");
+                break;
+            case "No first operand":
+                console.log("No first operand, ignoring");
+                break;
+            default:
+                console.error(error);
+                calculatorState.set('result', "ERROR");
+        }
     }
 }
 
 function equalsButtonClicked(_button) {
     console.log("Equals button clicked");
-    let operationError = performEqualsOperation();
-    resultElement.textContent = operationError ? operationError : + calculatorState.get('result');
+    performEqualsOperation();
+    updateResultElement(String(calculatorState.get('result')));
+}
+
+function performRepeatedOperatorOperation(){
+    console.log("Performing repeatedOperatorOperation");
+    calculatorState.set('secondOperand', calculatorState.get('firstOperand')); // set second operand to first one
+    performEqualsOperation();
 }
 
 function performOperatorDeclaration(operator) {
-    if (typeof operator !== "string") {
-        throw new Error("Invalid datatype");
-    }
-    if (!Operations.has(operator)){ // check for if operations has that operator
-        throw new Error("Invalid operator operation");
-    }
-    if (calculatorState.get('firstOperand')) { // if there is a first operand and operand is valid
-        if (!calculatorState.get('operator')) { // if there is no operator, store it
-            console.log("No operator, setting operator");
-            calculatorState.set('operator', operator);
-        } else if (calculatorState.get('operator') === operator) { // else if current operator is same as user input operator, we dont need to set it
-            console.log("Operator is same as current operator : performing duplicated operation : i.e. `4+4 4*4 4/4 4-4`");
-            calculatorState.set('secondOperand', calculatorState.get('firstOperand')); // set second operand to first one
+    try {
+        if (typeof operator !== "string") {
+            throw new Error("Invalid datatype");
         }
-    } else {
-        console.log("No first operand, ignore");
+        if (!Operations.has(operator)) { // check for if operations has that operator
+            throw new Error("Invalid operator operation");
+        }
+        if (calculatorState.get('firstOperand')) { // if there is a first operand and operand is valid
+            if (!calculatorState.get('operator')) { // if there is no operator, store it
+                console.log("No operator, setting operator");
+                calculatorState.set('operator', operator);
+            } else if (calculatorState.get('operator') === operator) { // else if input is a repeated operator
+                return "repeatedOperator";
+            }
+        } else {
+            console.log("No first operand, ignore");
+        }
+    }
+    catch (error) {
+        console.error(error);
+        calculatorState.set('result', "ERROR");
     }
 }
 
 function operatorButtonClicked(button) {
     console.log("Operator button clicked");
-    let operationError = performOperatorDeclaration(button.value);
-    resultElement.textContent = operationError ? operationError : Number(calculatorState.get('result'));
+    if (performOperatorDeclaration(button.value) === "repeatedOperator"){ // if we have repeated operator
+        performRepeatedOperatorOperation();
+        updateResultElement(String(calculatorState.get('result'))); // update display after repeating
+    }
 }
 
-function whichOperand(){
+function whichOperand() {
     let which;
     if (!calculatorState.get('operator')) { // if no operator stored, we are on first operand still.
         console.log("No operator, setting first operand");
@@ -132,36 +160,68 @@ function whichOperand(){
 }
 
 function performOperandDeclaration(newOperand) {
-    if (typeof newOperand !== "number") {
-        throw new Error("Invalid datatype");
+    try {
+        newOperand = Number(newOperand);
+        if (typeof newOperand !== "number") {
+            throw new Error("Invalid datatype");
+        }
+
+        // Check for operator, finding current operator
+        let whichOperand;
+        if (!calculatorState.get('operator')) { // if no operator stored, we are on first operand still.
+            console.log("No operator, setting first operand");
+            whichOperand = 'firstOperand';
+        } else {
+            console.log("Operator exists, setting second operand");
+            whichOperand = 'secondOperand';
+        }
+
+        // Check if operand exists
+        let storedOperand = Number(calculatorState.get(whichOperand)); // get specified operand
+        if (storedOperand) { // if a number is already assigned, append value to opperand
+            newOperand = Number(String(storedOperand) + String(newOperand)); // concat
+        }
+        calculatorState.set(whichOperand, newOperand);
+        console.log(`calculatorState.get(${whichOperand}) is ${calculatorState.get(whichOperand)}`);
     }
-    
-    // Check for operator, finding current operator
-    let whichOperand;
-    if (!calculatorState.get('operator')) { // if no operator stored, we are on first operand still.
-        console.log("No operator, setting first operand");
-        whichOperand = 'firstOperand';
-    } else {
-        console.log("Operator exists, setting second operand");
-        whichOperand = 'secondOperand';
+    catch (error) {
+        calculatorState.set('result', "ERROR");
+        return "ERROR";
     }
-    
-    // Check if operand exists
-    let storedOperand = Number(calculatorState.get(whichOperand)); // get specified operand
-    if (storedOperand){ // if a number is already assigned, append value to opperand
-        newOperand = Number(String(storedOperand) + String(newOperand)) // concat
-    }
-    
-    calculatorState.set(whichOperand, newOperand);
-    return String(newOperand);
 }
 
 function operandButtonClicked(button) {
     console.log("Operand button clicked");
-    resultElement.textContent =  performOperandDeclaration(button.value);
+    performOperandDeclaration(button.value);
+    updateResultElement(String(calculatorState.get(whichOperand())));
 }
 
-function decimalButtonClicked(_button) {
+function performDecimalDeclaration() {
+    try {
+        let whichOperand = whichOperand();
+        let operand = calculatorState.get(whichOperand);
+        if (!operand) {
+            operand = "0.";
+        } else if (operand.includes(".")) {
+            throw new Error("Operand already contains decimal");
+        } else {
+            operand += ".";
+        }
+        calculatorState.set(whichOperand, operand);
+    }
+    catch (error) {
+        switch (error){
+            default:
+                calculatorState.set('result', "ERROR");
+                return "ERROR";
+        }
+    }
+}
+
+function decimalButtonClicked(button) {
+    console.log("Decimal button clicked");
+    performDecimalDeclaration();
+    updateResultElement();
 }
 
 const safeCalculatorValues = new Set([
