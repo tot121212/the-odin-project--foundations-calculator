@@ -7,7 +7,7 @@ const calculatorState = new Map([
     ['secondOperand', null],
     ['result', null]
 ]);
-
+// hi
 const Operations = new Map([
     ["+", (a, b) => a + b],
     ["-", (a, b) => a - b],
